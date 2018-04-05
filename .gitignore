@@ -1,2 +1,7 @@
 .Rhistory
 .Rproj.user
+.RData
+.RuserData
+src/*.o
+src/*.so
+src/*.dll
