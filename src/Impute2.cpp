@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include "Impute2.h"
 
 //' Function to find the SNP data columns from an Impute 2 file
@@ -12,25 +13,29 @@
 //'
 //' @param i2file
 //' Name of impute 2 file
+//' @param snpColNames
+//' Vector of strings that are the names of the columns that contain
+//' SNP name, chromosome, location in base pairs, reference allele,
+//' and alternate allele, respectively. Unused values must be an empty
+//' string.
 //' @param dataStart
 //' Column where the genetic data starts. Only the columns before
 //' the genetic data are checked for SNP data
 //' @return
 //' List containing status and an
-//' Integer vector of length 5 will column numbers for
+//' Integer vector of length 5 with column numbers for
 //' SNP name, chromosome, location in BP, reference allele
-//' and alternate allele. These columns must have column
-//' name 'SNP', 'CHR', 'BP', 'A1', 'A2', respectively
+//' and alternate allele. 0 is used when value passed in snpCol is empty.
 //' @export
 // [[Rcpp::export]]
-Rcpp::List FindImpute2SNPData(std::string &i2file, const int dataStart) {
+Rcpp::List FindImpute2SNPData(std::string &i2file, Rcpp::StringVector &snpColNames, const int dataStart) {
   Rcpp::IntegerVector z(5);
   std::string status = "Good";
   Rcpp::List retval = Rcpp::List::create(Rcpp::Named("snpCol") = z, Rcpp::Named("status") = status);
+  std::vector<std::string> cSNPColNames = Rcpp::as<std::vector<std::string> >(snpColNames);
   std::string firstLine;
   std::ifstream infile;
   std::istringstream instring;
-  std::string snpColNames[5] = {"SNP", "CHR", "BP", "A1", "A2"};
   std::string colName;
   int i, j;
 
@@ -63,7 +68,9 @@ Rcpp::List FindImpute2SNPData(std::string &i2file, const int dataStart) {
       return retval;
     }
     for (j = 0; j < 5; ++j) {
-      if (colName == snpColNames[j]) {
+      if (cSNPColNames[j] == "")
+        continue;
+      if (colName == cSNPColNames[j]) {
         // Has the column already been found
         if (z[j] != 0) {
           retval["status"] = "More than one column found with column name " + snpColNames[j];
@@ -72,6 +79,12 @@ Rcpp::List FindImpute2SNPData(std::string &i2file, const int dataStart) {
         z[j] = i + 1;
         break;
       }
+    }
+  }
+  for (i = 0; i < 5; ++i) {
+    if (cSNPColNames[i] != "" && z[i] == 0) {
+      retval["status"] = "Not all columns found";
+      return retval;
     }
   }
   retval["snpCol"] = z;
