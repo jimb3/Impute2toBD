@@ -38,7 +38,7 @@
 #' Separator used in file. Currently only space and tabs are allowed.
 #' Default value is tab.
 #' @export
-GetI2Info <- function(i2file, header = TRUE, snpCol, subID, startCol, format = 2L, usesFID = TRUE, sep = '\t') {
+GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1", "A2"), subID, startCol, format = 2L, usesFID = TRUE, sep = '\t') {
   fileinfo <- list(filename = "",
                    snpCol = rep(0L,5),
                    numSubjects = 0,
@@ -60,9 +60,6 @@ GetI2Info <- function(i2file, header = TRUE, snpCol, subID, startCol, format = 2
   # If header is FALSE then subID must be specified
   if (header == FALSE & missing(subID) == TRUE)
     stop("If header is FALSE then subject IDs must be specified")
-  # If there is no header, are the SNP column numbers proviced?
-  if (header == FALSE & missing(snpCol) == TRUE)
-      stop("No snp data columns specified")
   # Is a genetic data starting column number provided?
   if (missing(startCol) == TRUE)
     stop("No data start column specified")
@@ -73,42 +70,48 @@ GetI2Info <- function(i2file, header = TRUE, snpCol, subID, startCol, format = 2
   # Starting column number must be greater than 1 - 1 column is needed to identify the SNP
   if (startCol < 2)
     stop("Starting data column must be greater than 1")
+
   # If SNP columns are provided, is it a vector of length 5?
-  if (missing(snpCol) == FALSE) {
-    if (is.vector(snpCol) == FALSE)
-      stop("snpCol is not a vector")
-    if (length(snpCol) != 5)
-      stop("Length of snpCol vector must be 5")
-    # If there is a header the snpCol vector may be character string
-    # in which case no checks are need. Otherwise checks that it is
-    # an integer string are required
-    if (is.character(snpCol[0]) == FALSE) {
-      if (all(snpCol == as.integer(snpCol)) == FALSE)
-        stop("SNP column numbers are not integers")
-      snpCol <- as.integer(snpCol)
-      # Column numbers must be nonnegative
-      if (min(snpCol) < 0)
-        stop("SNP column numbers cannot be negative")
-      # SNP name column must exist, id est, > 0
-      if (min(snpCol[1]) < 1)
-        stop("Column for SNP name must be positive")
-      # SNP column numbers must be unique
-      snpColNonZeros <- snpCol[snpCol > 0]
-      snpUnique <- unique(snpColNonZeros)
-      if (length(snpColNonZeros) != length(snpUnique))
-        stop("Nonzero SNP column numbers must be unique")
-      # Is the starting data column number greater than the largest
-      # column number in  the snp column array?
-      if (startCol <= max(snpCol))
-        stop("Data start column must be greater than largest SNP column value")
-      snpChrString <- FALSE
-    } else {
-      snpChrString <- TRUE
-    }
-  } else {
-    snpCol <- c("SNP", "CHR", "BP", "A1", "A2")
+  if (is.vector(snpCol) == FALSE)
+    stop("snpCol is not a vector")
+  if (length(snpCol) != 5)
+    stop("Length of snpCol vector must be 5")
+  # If there is a header the snpCol vector may be character string
+  # in which case no checks are need. Otherwise checks that it is
+  # an integer string are required
+  if (is.character(snpCol[0]) == TRUE) {
+    if (header == FALSE)
+      stop("If snpCol is a character string, there must be a header")
+    # SNP column names must be unique
+    snpColNonBlank <- snpCol[snpCol != '']
+    if (length(snpColNonBlank) != length(unique(snpColNonBlank)))
+      stop("Nonzero SNP column numbers must be unique")
+    # A column name for the SNP name must be provided
+    if (snpCol[1] = '')
+      stop("A column name must be provided the SNP name")
     snpChrString <- TRUE
+  } else {
+    # Column numbers must be integers
+    if (all(snpCol == as.integer(snpCol)) == FALSE)
+      stop("SNP column numbers are not integers")
+    snpCol <- as.integer(snpCol)
+    # Column numbers must be nonnegative
+    if (min(snpCol) < 0)
+      stop("SNP column numbers cannot be negative")
+    # SNP name column must exist, id est, > 0
+    if (min(snpCol[1]) < 1)
+      stop("Column for SNP name must be positive")
+    # SNP column numbers must be unique
+    snpColNonZeros <- snpCol[snpCol > 0]
+    if (length(snpColNonZeros) != length(unique(snpColNonZeros)))
+      stop("Nonzero SNP column numbers must be unique")
+    # Is the starting data column number greater than the largest
+    # column number in  the snp column array?
+    if (startCol <= max(snpCol))
+      stop("Data start column must be greater than largest SNP column value")
+    snpChrString <- FALSE
   }
+
   # Is format an integer from 1 to 3?
   if ((as.integer(format) == format) == FALSE)
     stop("Value for format must be an integer from 1 to 3")
@@ -118,6 +121,49 @@ GetI2Info <- function(i2file, header = TRUE, snpCol, subID, startCol, format = 2
   # Is usesFID a logical value?
   if (is.logical(usesFID) == FALSE)
     stop("Value for usesFID is not a logical value")
+  # Is sep a character and an allowed value
+  if (is.character(sep) == FALSE)
+    stop("Separator is not a character")
+  if ((sep %in% c('\t', ' ', ',')) == FALSE)
+    stop ("Invalid value for sep")
+
+  if (header == TRUE) {
+    # Read the header
+    con <- file(description = i2file, open = "r")
+    headerLine <- scan(file = con1,  nlines = 1, quiet = TRUE, what = 'character', sep = sep)
+    close(con)
+    # Are there enough columns?
+    if (length(headerLine) < startCol)
+      stop("Number of columns in file is less than the genetic data starting column")
+    # Get the values that can be SNP data columns
+    snpDataHeader <- headerLine[1:(startCol - 1)]
+    # Are the column names unique?
+    if (length(snpDataHeader) != length(unique(snpDataHeader)))
+      stop("Column names in file for SNP data are not unique")
+    # Find the columns with the appropriate names
+    if (snpChrString == TRUE) {
+      snpColUsed <- match(snpColNonBlank, snpDataHeader)
+      if (length(snpColUsed[is.na(snpColUsed)]) > 0)
+        stop("Not all column names found")
+      isnpCol <- rep(0L, 5)
+      isnpCol[snpCol != ''] <- snpColUsed
+    }
+    # Get the subject IDs
+    if (usesFID == FALSE) {
+      df <- data.frame(FID = rep("", length(headerLine) - startCol + 1), IID = headerLine[startCol:length(headerLine)], stringsAsFactors = FALSE)
+    } else {
+      if (((length(headerLine) - startCol) %% 2) != 1)
+        stop("Odd number of entries for family and subject IDs")
+      df <- data.frame(FID = headerLine[seq(startCol, length(headerLine) - 1, 2)], IID = headerLine[seq(startCol + 1, length(headerLine), 2)], stringsAsFactors = FALSE)
+    }
+    numSub <- nrow(df)
+    coltype <- c(rep("character", startCol - 1), rep("numeric",numSub * format))
+    # Read the second line
+    con <- file(description = i2file, open = "r")
+    headerLine <- scan(file = con1,  nlines = 1, quiet = TRUE, what = 'character', sep = sep)
+    firstDataLine <- scan(file = con1,  nlines = 1, quiet = TRUE, what = coltype, sep = sep)
+    close(con)
+  }
 
   # Find the column numbers for the SNP data
   # This is only done if there is a header and snpCol was not provided
