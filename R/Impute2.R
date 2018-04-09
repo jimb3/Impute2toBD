@@ -40,10 +40,15 @@
 #' @export
 GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1", "A2"), subID, startCol, format = 2L, usesFID = TRUE, sep = '\t') {
   fileinfo <- list(filename = "",
+                   header = header,
                    snpCol = rep(0L,5),
                    numSubjects = 0,
+                   usesFID = usesFID,
                    subjects = data.frame(FID = character(), IID = character(), stringsAsFactors = FALSE),
-                   snps = data.frame(SNP = character(), CHR = character(), BP = integer(), A1 = character(), A2 = character(), stringsAsFactors = FALSE))
+                   format = format,
+                   numSNPs = 0,
+                   snps = data.frame(SNP = character(), CHR = character(), BP = integer(), A1 = character(), A2 = character(), stringsAsFactors = FALSE),
+                   sep = sep)
   # Is a file name provided?
   if (missing(i2file) == TRUE)
     stop("No file name specified")
@@ -51,6 +56,7 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
   if (is.character(i2file) == FALSE)
     stop("File name is not a string")
   fileinfo$filename <- i2file
+
   # Is the header a logical value?
   if (is.logical(header) == FALSE)
     stop("Value for header is not a logical value")
@@ -60,6 +66,24 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
   # If header is FALSE then subID must be specified
   if (header == FALSE & missing(subID) == TRUE)
     stop("If header is FALSE then subject IDs must be specified")
+
+  # Is usesFID a logical value?
+  if (is.logical(usesFID) == FALSE)
+    stop("Value for usesFID is not a logical value")
+  # Verify subID is good - has 2 columns and they are character values
+  if (missing(subID) == FALSE) {
+    if (is.data.frame(subID) == FALSE)
+      stop("subID is not a data frame")
+    if (ncol(subID) != 2)
+      stop("subID must have two columns")
+    if(all(sapply(subID, typeof) == "character") == FALSE)
+      stop("columns in subID must be character values")
+    numSub = nrow(subID)
+    fileinfo$numSubjects <- numSub
+    fileinfo$subjects <- subID
+    colnames(fileinfo$subjects) <- c("FID", "IID")
+  }
+
   # Is a genetic data starting column number provided?
   if (missing(startCol) == TRUE)
     stop("No data start column specified")
@@ -71,7 +95,7 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
   if (startCol < 2)
     stop("Starting data column must be greater than 1")
 
-  # If SNP columns are provided, is it a vector of length 5?
+  # Is snpCol a vector of length 5?
   if (is.vector(snpCol) == FALSE)
     stop("snpCol is not a vector")
   if (length(snpCol) != 5)
@@ -79,22 +103,25 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
   # If there is a header the snpCol vector may be character string
   # in which case no checks are need. Otherwise checks that it is
   # an integer string are required
-  if (is.character(snpCol[0]) == TRUE) {
+  if (all(sapply(snpCol, class) == "character") == TRUE) {
     if (header == FALSE)
       stop("If snpCol is a character string, there must be a header")
     # SNP column names must be unique
     snpColNonBlank <- snpCol[snpCol != '']
     if (length(snpColNonBlank) != length(unique(snpColNonBlank)))
-      stop("Nonzero SNP column numbers must be unique")
+      stop("Non blank SNP column names must be unique")
+    if (length(snpColNonBlank) >= startCol)
+      stop("Number of column names provided for SNP data is equal to or larger than the data start column number")
     # A column name for the SNP name must be provided
-    if (snpCol[1] = '')
+    if (snpCol[1] == '')
       stop("A column name must be provided the SNP name")
     snpChrString <- TRUE
   } else {
     # Column numbers must be integers
     if (all(snpCol == as.integer(snpCol)) == FALSE)
-      stop("SNP column numbers are not integers")
+      stop("SNP column numbers are not integers or characters")
     snpCol <- as.integer(snpCol)
+    fileinfo$snpCol <- snpCol
     # Column numbers must be nonnegative
     if (min(snpCol) < 0)
       stop("SNP column numbers cannot be negative")
@@ -118,19 +145,16 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
   format <- as.integer(format)
   if (format < 1 | format > 3)
     stop("Value for format must be an integer from 1 to 3")
-  # Is usesFID a logical value?
-  if (is.logical(usesFID) == FALSE)
-    stop("Value for usesFID is not a logical value")
   # Is sep a character and an allowed value
   if (is.character(sep) == FALSE)
-    stop("Separator is not a character")
+    stop("sep is not a character")
   if ((sep %in% c('\t', ' ', ',')) == FALSE)
-    stop ("Invalid value for sep")
+    stop ("Invalid value for sep. Must be ' ', '\\t' or ','")
 
   if (header == TRUE) {
     # Read the header
     con <- file(description = i2file, open = "r")
-    headerLine <- scan(file = con1,  nlines = 1, quiet = TRUE, what = 'character', sep = sep)
+    headerLine <- scan(file = con,  nlines = 1, quiet = TRUE, what = 'character', sep = sep)
     close(con)
     # Are there enough columns?
     if (length(headerLine) < startCol)
@@ -147,6 +171,8 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
         stop("Not all column names found")
       isnpCol <- rep(0L, 5)
       isnpCol[snpCol != ''] <- snpColUsed
+      fileinfo$snpCol <- isnpCol
+      snpCol <- isnpCol
     }
     # Get the subject IDs
     if (usesFID == FALSE) {
@@ -156,44 +182,25 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
         stop("Odd number of entries for family and subject IDs")
       df <- data.frame(FID = headerLine[seq(startCol, length(headerLine) - 1, 2)], IID = headerLine[seq(startCol + 1, length(headerLine), 2)], stringsAsFactors = FALSE)
     }
+    fileinfo$subjects <- df
     numSub <- nrow(df)
-    coltype <- c(rep("character", startCol - 1), rep("numeric",numSub * format))
-    # Read the second line
+    fileinfo$numSubjects <- numSub
+    # Read the first line of data
     con <- file(description = i2file, open = "r")
-    headerLine <- scan(file = con1,  nlines = 1, quiet = TRUE, what = 'character', sep = sep)
-    firstDataLine <- scan(file = con1,  nlines = 1, quiet = TRUE, what = coltype, sep = sep)
+    firstDataLine <- scan(file = con,  skip = 1, nlines = 1, quiet = TRUE, what = character(), sep = sep)
     close(con)
-  }
-
-  # Find the column numbers for the SNP data
-  # This is only done if there is a header and snpCol was not provided
-  # or snpCol is a character string
-  if (snpChrString == TRUE) {
-    snpCol[is.na(snpCol)] <- ''
-    z <- FindImpute2SNPData(i2file, snpCol, startCol)
-    # Were the values successfully found, if not return the error
-    if (z$status != "Good")
-      stop(z$status)
-    snpCol <- z$snpCol
-  }
-  fileinfo$snpCol <- snpCol
-
-  # Read subject IDs if there is a header otherwise count number of subjects
-  if (header == TRUE) {
-    z <- ReadImpute2Subjects(i2file, startCol, usesFID)
-    if (z$status != "Good")
-      stop(z$status)
-    fileinfo$subjects <- z$subjects
-    fileinfo$numSubjects <- z$numSub
+    if (length(firstDataLine) != startCol + format * numSub - 1)
+      stop("Number of entries on first data file does not agree with number of subjects and format")
   } else {
-    z <- CountImpute2Subjects(i2file, startCol, format)
-    if (z$status != "Good")
-      stop(z$status)
-    fileinfo$numSubjects <- z$numSub
+    # Read in the first line of data
+    con <- file(description = i2file, open = "r")
+    firstDataLine <- scan(file = con,  nlines = 1, quiet = TRUE, what = character(), sep = sep)
+    close(con)
+    if (length(firstDataLine) != startCol + format * numSub - 1)
+      stop("Number of entries on first data file does not agree with number of subjects and format")
   }
 
   # Read in the information about the SNPs
-  options(warn = 2)
   numCol <- fileinfo$numSubjects * format + startCol - 1
   colClasses <- c(rep("NULL", numCol))
   snpColNonZeros <- snpCol[snpCol > 0]
@@ -207,6 +214,7 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
     snps <- read.table(i2file, sep = sep, header = FALSE, colClasses = colClasses, quote = "")
   colnames(snps) <- snpColNames[snpColNonZeros]
   fileinfo$snps <- snps
+  fileinfo$numSNPs <- nrow(snps)
 
   return (fileinfo)
 }

@@ -6,14 +6,15 @@
 using namespace Rcpp;
 
 // FindImpute2SNPData
-Rcpp::List FindImpute2SNPData(std::string& i2file, const int dataStart);
-RcppExport SEXP _Impute2toBD_FindImpute2SNPData(SEXP i2fileSEXP, SEXP dataStartSEXP) {
+Rcpp::List FindImpute2SNPData(std::string& i2file, Rcpp::StringVector& snpColNames, const int dataStart);
+RcppExport SEXP _Impute2toBD_FindImpute2SNPData(SEXP i2fileSEXP, SEXP snpColNamesSEXP, SEXP dataStartSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string& >::type i2file(i2fileSEXP);
+    Rcpp::traits::input_parameter< Rcpp::StringVector& >::type snpColNames(snpColNamesSEXP);
     Rcpp::traits::input_parameter< const int >::type dataStart(dataStartSEXP);
-    rcpp_result_gen = Rcpp::wrap(FindImpute2SNPData(i2file, dataStart));
+    rcpp_result_gen = Rcpp::wrap(FindImpute2SNPData(i2file, snpColNames, dataStart));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -70,7 +71,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_Impute2toBD_FindImpute2SNPData", (DL_FUNC) &_Impute2toBD_FindImpute2SNPData, 2},
+    {"_Impute2toBD_FindImpute2SNPData", (DL_FUNC) &_Impute2toBD_FindImpute2SNPData, 3},
     {"_Impute2toBD_ReadImpute2Subjects", (DL_FUNC) &_Impute2toBD_ReadImpute2Subjects, 3},
     {"_Impute2toBD_CountImpute2Subjects", (DL_FUNC) &_Impute2toBD_CountImpute2Subjects, 3},
     {"_Impute2toBD_rcpp_hello", (DL_FUNC) &_Impute2toBD_rcpp_hello, 0},

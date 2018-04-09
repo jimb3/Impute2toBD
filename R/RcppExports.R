@@ -9,18 +9,22 @@
 #'
 #' @param i2file
 #' Name of impute 2 file
+#' @param snpColNames
+#' Vector of strings that are the names of the columns that contain
+#' SNP name, chromosome, location in base pairs, reference allele,
+#' and alternate allele, respectively. Unused values must be an empty
+#' string.
 #' @param dataStart
 #' Column where the genetic data starts. Only the columns before
 #' the genetic data are checked for SNP data
 #' @return
 #' List containing status and an
-#' Integer vector of length 5 will column numbers for
+#' Integer vector of length 5 with column numbers for
 #' SNP name, chromosome, location in BP, reference allele
-#' and alternate allele. These columns must have column
-#' name 'SNP', 'CHR', 'BP', 'A1', 'A2', respectively
+#' and alternate allele. 0 is used when value passed in snpCol is empty.
 #' @export
-FindImpute2SNPData <- function(i2file, dataStart) {
-    .Call('_Impute2toBD_FindImpute2SNPData', PACKAGE = 'Impute2toBD', i2file, dataStart)
+FindImpute2SNPData <- function(i2file, snpColNames, dataStart) {
+    .Call('_Impute2toBD_FindImpute2SNPData', PACKAGE = 'Impute2toBD', i2file, snpColNames, dataStart)
 }
 
 #' Function to read the subject IDs from an Impute 2 file
