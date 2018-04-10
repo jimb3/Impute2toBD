@@ -42,6 +42,7 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
   fileinfo <- list(filename = "",
                    header = header,
                    snpCol = rep(0L,5),
+                   startCol = 0,
                    numSubjects = 0,
                    usesFID = usesFID,
                    subjects = data.frame(FID = character(), IID = character(), stringsAsFactors = FALSE),
@@ -87,6 +88,7 @@ GetI2Info <- function(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1"
   # Is a genetic data starting column number provided?
   if (missing(startCol) == TRUE)
     stop("No data start column specified")
+  fileinfo$startCol <- startCol
   # The starting column value must be an integer
   if ((startCol == as.integer(startCol)) == FALSE)
     stop("Starting data column must be an integer")

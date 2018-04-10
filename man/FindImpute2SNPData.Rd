@@ -4,20 +4,24 @@
 \alias{FindImpute2SNPData}
 \title{Function to find the SNP data columns from an Impute 2 file}
 \usage{
-FindImpute2SNPData(i2file, dataStart)
+FindImpute2SNPData(i2file, snpColNames, dataStart)
 }
 \arguments{
 \item{i2file}{Name of impute 2 file}
+
+\item{snpColNames}{Vector of strings that are the names of the columns that contain
+SNP name, chromosome, location in base pairs, reference allele,
+and alternate allele, respectively. Unused values must be an empty
+string.}
 
 \item{dataStart}{Column where the genetic data starts. Only the columns before
 the genetic data are checked for SNP data}
 }
 \value{
 List containing status and an
-Integer vector of length 5 will column numbers for
+Integer vector of length 5 with column numbers for
 SNP name, chromosome, location in BP, reference allele
-and alternate allele. These columns must have column
-name 'SNP', 'CHR', 'BP', 'A1', 'A2', respectively
+and alternate allele. 0 is used when value passed in snpCol is empty.
 }
 \description{
 Function to find the SNP data columns from an Impute 2 file.

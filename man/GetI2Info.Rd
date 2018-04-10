@@ -2,34 +2,47 @@
 % Please edit documentation in R/Impute2.R
 \name{GetI2Info}
 \alias{GetI2Info}
-\title{Function to get info about Impute 2 file}
+\title{Function to get information about a file in an Impute 2 format}
 \usage{
-GetI2Info(i2file, header = TRUE, snpCol, startCol, format = 2L,
-  usesFID = TRUE, sep = "\\t")
+GetI2Info(i2file, header = TRUE, snpCol = c("SNP", "CHR", "BP", "A1", "A2"),
+  subID, startCol, format = 2L, usesFID = TRUE, sep = "\\t")
 }
 \arguments{
-\item{i2file}{Impute 2 file name}
+\item{i2file}{Impute 2 file name. Must be provided.}
 
-\item{header}{Does the Impute 2 file have a header?}
+\item{header}{Does the Impute 2 file have a header? Default value is TRUE.}
 
 \item{snpCol}{Must be provided if there is no header.
-Vector of column numbers for SNP name, chromosome, location in BP,
-reference allele, and alternate allele respectively. All must be provided
-a value of 0 indicates the value isn't in the file. SNP name column is required.
-If provided and there is a header, column names in header are ignored.
-If not provided, column names in header are used to find appropriate columns
-In this case the column names must be 'SNP', 'CHR', 'BP', 'A1' and 'A2'.}
+If this case this must be a integer vector of the column numbers for SNP name,
+chromosome, location in BP, reference allele, and alternate allele respectively.
+All must be provided a value of 0 indicates the value isn't in the file. SNP name
+column is required.
+If provided and there is a header, the vector may integer vector as described
+above or it may be a character array with the column names of the appropriate
+values. Unused columns can be indicated the an empty string or NA. If snpCol
+is not provided and there is a header, snpCol takes on the default values of
+'SNP', 'CHR', 'BP', 'A1' and 'A2'.}
 
 \item{format}{Number of genetic probabilities in file, must be 1, 2 or 3
-1 indicates that only the dosage is in the file}
+1 indicates that only the dosage is in the file Default value is 2.}
 
 \item{usesFID}{Does the impute file contain both the family and subject ID? Not used if
-there is not header}
+there is not header. Default value is TRUE.}
 
-\item{sep}{Separator used in file. Currently only space and tabs are allowed}
+\item{sep}{Separator used in file. Currently only space and tabs are allowed.
+Default value is tab.}
 
-\item{startcol}{Column number where dosages or genetic probabilities begin. Must be provided}
+\item{startcol}{Column number where dosages or genetic probabilities begin. Must be provided.}
 }
 \description{
-Function to get info about Impute 2 file
+Function to get information about a file in an Impute 2 like format.
+An Impute 2 like format has a group of columns with SNP information
+followed by a group of dosage or genetic probabilities for the subjects.
+There must be a column with the SNP name that uniquely identifies the SNP.
+Optional column values can include chromosome, location in base pairs,
+reference and alternate alleles. The file may contain a header. If there
+is a header, the columns with SNP data can be found using the column names
+or by specifying the column numbers. If there is a header, the subject and
+family IDs are read from the header. If there is not header, the subject
+and family IDs must be specified.
 }
